@@ -1,0 +1,115 @@
+<html>
+    <head> </head>
+    <style>
+        .disp {
+            padding-bottom: 10px;
+            border-bottom: 1px solid black;
+        }
+    </style>
+    <body>
+        <h1>Upload Images [or Just Paste!]</h1>
+        <input type="file" multiple accept="image/*" id="fileInput" />
+        <div
+            id="displayDiv"
+            style="
+                display: flex;
+                flex-direction: row;
+                gap: 15px;
+                width: 50%;
+                margin: auto;
+            "
+        >
+            <div
+                id="fileNameDiv"
+                style="
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    border-right: 1px solid black;
+                    padding: '10px';
+                "
+            ></div>
+            <div
+                id="textDiv"
+                style="display: flex; flex-direction: column; gap: 10px;"
+            ></div>
+        </div>
+    </body>
+
+    <script>
+        const input = document.querySelector("#fileInput");
+        const preview = document.querySelector("#fileNameDiv");
+        const textPreview = document.querySelector("#textDiv");
+        const uploadButton = document.querySelector("#uploadButton");
+        const apiUrl = "http://localhost:8000";
+
+        const clearPreview = () => {
+            while (preview.firstChild) {
+                preview.removeChild(preview.firstChild);
+            }
+        };
+        const clearTextPreview = () => {
+            while (textPreview.firstChild) {
+                textPreview.removeChild(textPreview.firstChild);
+            }
+        };
+
+        const displayImages = (files) => {
+            files.forEach((f) => {
+                const d = document.createElement("div");
+                d.textContent = `File: ${f.name}`;
+                d.classList.add('disp')
+
+                const i = document.createElement("img");
+                i.src = URL.createObjectURL(f);
+
+                preview.appendChild(d);
+                d.appendChild(i);
+            });
+            if (files.length) {
+                convertImagesToText(files);
+            }
+        };
+
+        document.addEventListener("paste", function (evt) {
+            // Get the data of clipboard
+            const clipboardItems = evt.clipboardData.items;
+            const items = [].slice.call(clipboardItems).filter(function (item) {
+                // Filter the image items only
+                return item.type.indexOf("image") !== -1;
+            });
+            if (items.length === 0) {
+                return;
+            }
+            const blobs = items.map((i) => i.getAsFile());
+            displayImages(blobs);
+        });
+        const filesUploaded = () => {
+            displayImages(Array.from(input.files));
+        };
+        input.addEventListener("change", filesUploaded);
+
+        const convertImagesToText = async (files) => {
+            const formData = new FormData();
+            files.forEach((f) => formData.append("image", f, f.name));
+            const res = await fetch(`${apiUrl}/get_text`, {
+                method: "POST",
+                body: formData,
+            });
+
+            clearTextPreview();
+            const d = document.createElement("div");
+            d.textContent = "Loading";
+            textPreview.appendChild(d);
+
+            const body = await res.json();
+            clearTextPreview();
+            body.texts.forEach((t) => {
+                const d = document.createElement("div");
+                d.textContent = t;
+                d.classList.add('disp')
+                textPreview.appendChild(d);
+            });
+        };
+    </script>
+</html>
